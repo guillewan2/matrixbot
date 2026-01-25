@@ -13,5 +13,6 @@ Toda la documentación técnica y de usuario se ha consolidado en:
 docker compose up -d
 ```
 
->[!warning]Aviso
+> [!WARNING] 
 > Todo el repositorio está hecho con IA generativa como único recurso al ser algo sin importancia crítica y como hobby. No se recomienda su uso en entornos de producción sin una revisión exhaustiva del código. Si algún día llego a tener tiempo, lo revisaré y mejoraré, pero por ahora no es una prioridad.
+

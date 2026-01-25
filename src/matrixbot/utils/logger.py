@@ -56,20 +56,21 @@ class SecurityLogger:
         emoji = "✅" if status == "success" else "❌"
         logger.info(f"{emoji} Login {status}: {user_id} from {ip_address} at {timestamp}")
         
+        # TODO: Commented out LOGIN SUCCESS webhook notification for later fix
         # Send webhook notification
-        if self.webhook_callback:
-            message = (
-                f"{emoji} **Login {status.upper()}**\n\n"
-                f"• **Usuario:** `{user_id}`\n"
-                f"• **Servidor:** {homeserver}\n"
-                f"• **IP:** `{ip_address}`\n"
-                f"• **Tiempo:** {timestamp}"
-            )
-            
-            try:
-                await self.webhook_callback(message, self.DEFAULT_SECURITY_ROOM)
-            except Exception as e:
-                logger.error(f"Error sending login webhook: {e}")
+        # if self.webhook_callback:
+        #     message = (
+        #         f"{emoji} **Login {status.upper()}**\n\n"
+        #         f"• **Usuario:** `{user_id}`\n"
+        #         f"• **Servidor:** {homeserver}\n"
+        #         f"• **IP:** `{ip_address}`\n"
+        #         f"• **Tiempo:** {timestamp}"
+        #     )
+        #     
+        #     try:
+        #         await self.webhook_callback(message, self.DEFAULT_SECURITY_ROOM)
+        #     except Exception as e:
+        #         logger.error(f"Error sending login webhook: {e}")
     
     async def log_sync_start(self, user_id: str):
         """Log when sync starts."""

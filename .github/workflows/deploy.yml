@@ -1,0 +1,36 @@
+name: Deploy a VPS (Public IP)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: 
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}        
+          username: ${{ secrets.VPS_USER }}    
+          key: ${{ secrets.SSH_PRIVATE_KEY }}  
+          port: ${{ secrets.VPS_PORT }}        #
+          # Timeout aumentado por si la compilación del docker tarda
+          timeout: 60s
+          command_timeout: 10m
+          script: |
+            echo "Looking project folder"
+            cd /admin/matrixbot
+            
+            echo "Pulling latest changes from GitHub..."
+            git fetch --all
+            git reset --hard origin/main
+            
+            echo "Recreating Docker containers..."
+            docker compose up -d --build --remove-orphans
+            
+            echo "Cleaning up unused Docker images..."
+            docker image prune -f
+            
+            echo "Done! The bot is updated and running."

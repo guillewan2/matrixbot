@@ -1,0 +1,25 @@
+{
+    "users": {
+        "@admin:matrix.example.com": {
+            "ai_enabled": true,
+            "api_key": "YOUR_GEMINI_API_KEY_HERE",
+            "model": "gemini-2.0-flash-exp",
+            "system_prompt": "You are a helpful AI assistant in a Matrix chat. Be concise and helpful.",
+            "max_history": 10
+        },
+        "@user:matrix.example.com": {
+            "ai_enabled": true,
+            "api_key": "ANOTHER_GEMINI_API_KEY",
+            "model": "gemini-1.5-flash",
+            "system_prompt": "You are a friendly assistant. Always be polite and helpful.",
+            "max_history": 5
+        },
+        "@limited_user:matrix.example.com": {
+            "ai_enabled": false,
+            "api_key": null,
+            "model": null,
+            "system_prompt": null,
+            "max_history": 0
+        }
+    }
+}

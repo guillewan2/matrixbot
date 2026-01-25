@@ -1,0 +1,52 @@
+{
+    "commands": {
+        "!help": {
+            "description": "Show available commands",
+            "allowed_users": [],
+            "script": null,
+            "type": "builtin"
+        },
+        "!ping": {
+            "description": "Check if bot is responsive",
+            "allowed_users": [],
+            "script": null,
+            "type": "builtin"
+        },
+        "!reload": {
+            "description": "Reload commands configuration",
+            "allowed_users": ["@admin:matrix.example.com"],
+            "script": null,
+            "type": "builtin"
+        },
+        "!uptime": {
+            "description": "Show system uptime",
+            "allowed_users": ["@admin:matrix.example.com"],
+            "script": "uptime",
+            "type": "shell"
+        },
+        "!date": {
+            "description": "Show current date and time",
+            "allowed_users": [],
+            "script": "date",
+            "type": "shell"
+        },
+        "!df": {
+            "description": "Show disk usage",
+            "allowed_users": ["@admin:matrix.example.com"],
+            "script": "df -h",
+            "type": "shell"
+        },
+        "!whoami": {
+            "description": "Show current system user",
+            "allowed_users": [],
+            "script": "whoami",
+            "type": "shell"
+        },
+        "!hostname": {
+            "description": "Show system hostname",
+            "allowed_users": ["@admin:matrix.example.com"],
+            "script": "hostname",
+            "type": "shell"
+        }
+    }
+}

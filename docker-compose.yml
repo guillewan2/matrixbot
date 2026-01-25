@@ -1,0 +1,14 @@
+services:
+  matrixbot:
+    build: .
+    container_name: matrixbot
+    volumes:
+      - ./config:/app/config
+      - ./store:/app/store
+      - ./logs:/app/logs
+      - ./.env:/app/.env
+    network_mode: "host"
+    restart: unless-stopped
+    # Ports are ignored when using host network mode
+    # ports:
+    #   - "8080:8080"

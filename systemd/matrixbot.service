@@ -1,0 +1,28 @@
+[Unit]
+Description=Matrix Bot con E2EE, IA y Comandos Personalizados
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=guille
+Group=guille
+WorkingDirectory=/admin/matrixbot
+Environment="PATH=/admin/matrixbot/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/admin/matrixbot/venv/bin/python /admin/matrixbot/bot.py
+
+# Reiniciar automáticamente si falla
+Restart=always
+RestartSec=10
+
+# Logs
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=matrixbot
+
+# Seguridad
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

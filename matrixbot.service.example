@@ -1,0 +1,15 @@
+[Unit]
+Description=Matrix Bot with AI and E2EE
+After=network.target
+
+[Service]
+Type=simple
+User=youruser
+WorkingDirectory=/admin/matrixbot
+Environment="PATH=/admin/matrixbot/venv/bin"
+ExecStart=/admin/matrixbot/venv/bin/python /admin/matrixbot/bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

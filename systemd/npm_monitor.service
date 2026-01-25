@@ -1,0 +1,24 @@
+[Unit]
+Description=Nginx Proxy Manager Monitor
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=guille
+WorkingDirectory=/admin/matrixbot
+ExecStart=/usr/bin/python3 /admin/matrixbot/npm_monitor.py
+Restart=always
+RestartSec=30
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=npm_monitor
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -2,4 +2,6 @@ matrix-nio[e2e]==0.24.0
 python-dotenv==1.0.0
 google-generativeai>=0.3.0
 aiofiles==23.2.1
-aiohttp==3.9.1
+aiohttp==3.13.3
+h11==0.16.0
+protobuf>=5.29.6

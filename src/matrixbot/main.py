@@ -244,16 +244,17 @@ class MatrixBot:
         if event.membership == "join":
             logger.debug(f"User {event.state_key} joined room {room.room_id}")
             
+            # TODO: Commented out LOGIN SUCCESS notification for user room joins - for later fix
             # Send security alert for user logins (exclude bot itself)
-            if event.state_key != self.client.user_id and self.security_logger:
-                # Extract homeserver from user_id (@user:homeserver)
-                homeserver = event.state_key.split(':')[1] if ':' in event.state_key else 'unknown'
-                await self.security_logger.log_login(
-                    user_id=event.state_key,
-                    homeserver=homeserver,
-                    ip_address='unknown',
-                    status='success'
-                )
+            # if event.state_key != self.client.user_id and self.security_logger:
+            #     # Extract homeserver from user_id (@user:homeserver)
+            #     homeserver = event.state_key.split(':')[1] if ':' in event.state_key else 'unknown'
+            #     await self.security_logger.log_login(
+            #         user_id=event.state_key,
+            #         homeserver=homeserver,
+            #         ip_address='unknown',
+            #         status='success'
+            #     )
         elif event.membership == "leave":
             logger.debug(f"User {event.state_key} left room {room.room_id}")
         
@@ -496,21 +497,23 @@ class MatrixBot:
             # Login
             if not await self.login():
                 logger.error("Failed to login, exiting")
-                await self.security_logger.log_login(
-                    self.user_id, 
-                    self.homeserver, 
-                    ip_address="local",
-                    status="failed"
-                )
+                # TODO: Commented out LOGIN SUCCESS notification for bot login failures - for later fix
+                # await self.security_logger.log_login(
+                #     self.user_id, 
+                #     self.homeserver, 
+                #     ip_address="local",
+                #     status="failed"
+                # )
                 return
             
+            # TODO: Commented out LOGIN SUCCESS notification for bot login - for later fix
             # Log successful login
-            await self.security_logger.log_login(
-                self.user_id,
-                self.homeserver,
-                ip_address="local",
-                status="success"
-            )
+            # await self.security_logger.log_login(
+            #     self.user_id,
+            #     self.homeserver,
+            #     ip_address="local",
+            #     status="success"
+            # )
             
             logger.info("Bot is ready!")
             

@@ -480,38 +480,6 @@ class MatrixBot:
         except Exception as e:
             logger.error(f"Markdown conversion error: {e}", exc_info=True)
             return text  # Return original text if markdown processing fails
-        
-        # Bold: **text** or __text__ -> <strong>text</strong>
-        html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
-        html = re.sub(r'__(.+?)__', r'<strong>\1</strong>', html)
-        
-        # Italic: *text* or _text_ -> <em>text</em>
-        html = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html)
-        html = re.sub(r'_(.+?)_', r'<em>\1</em>', html)
-        
-        # Inline code: `text` -> <code>text</code>
-        def replace_inline_code(match):
-            code = match.group(1)
-            # Escape HTML in code
-            code = code.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            return f'<code>{code}</code>'
-        
-        html = re.sub(r'`(.+?)`', replace_inline_code, html)
-        
-        # Line breaks: \n -> <br/> (but NOT inside code blocks which are saved)
-        html = html.replace('\n', '<br/>')
-        
-        # Restore code blocks (which preserve their internal newlines)
-        for i, code_block in enumerate(code_blocks):
-            html = html.replace(f'{{{{CODE-BLOCK-{i}}}}}', code_block)
-            return f'<code>{code}</code>'
-        
-        html = re.sub(r'`(.+?)`', replace_inline_code, html)
-        
-        # Line breaks: \n -> <br/>
-        html = html.replace('\n', '<br/>')
-        
-        return html
     
     async def sync_forever(self):
         """Sync loop that runs forever."""

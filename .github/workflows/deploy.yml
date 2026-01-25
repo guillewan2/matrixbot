@@ -1,4 +1,4 @@
-name: Deploy a VPS (Public IP)
+name: Deploy to VPS
 
 on:
   push:

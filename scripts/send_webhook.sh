@@ -11,7 +11,7 @@ ENCODED_USER=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$MAT
 
 # Use local IP by default, but allow override or use logic to determine target
 # Assuming localhost for script default, change to your VPS IP if running remotely
-BASE_URL="http://localhost:23983"
+BASE_URL="http://100.124.77.20:23983"
 # BASE_URL="http://100.124.77.20:23983" # Descomentar para usar IP de Tailscale
 
 WEBHOOK_URL="$BASE_URL/api/webhooks/${ENCODED_USER}/token"
@@ -25,10 +25,13 @@ while true; do
         break
     fi
     
+    # Escapar caracteres especiales en el mensaje para JSON
+    ESCAPED_MSG=$(python3 -c "import json; print(json.dumps('''$MSG''')[1:-1])")
+    
     echo "Enviando a: $WEBHOOK_URL"
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$WEBHOOK_URL" \
         -H 'Content-Type: application/json' \
-        -d '{"content": "'$MSG'"}')
+        -d "{\"content\": \"$ESCAPED_MSG\"}")
     
     if [ "$HTTP_CODE" -eq 204 ] || [ "$HTTP_CODE" -eq 200 ]; then
         echo " [enviado - $HTTP_CODE]"

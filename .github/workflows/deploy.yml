@@ -15,22 +15,35 @@ jobs:
           host: ${{ secrets.VPS_HOST }}        
           username: ${{ secrets.VPS_USER }}    
           key: ${{ secrets.SSH_PRIVATE_KEY }}  
-          port: ${{ secrets.VPS_PORT }}        #
-          # Timeout aumentado por si la compilación del docker tarda
+          port: ${{ secrets.VPS_PORT }}
           timeout: 60s
           command_timeout: 10m
           script: |
-            echo "Looking project folder"
+            echo "📁 Navigating to project folder..."
             cd /admin/matrixbot
             
-            echo "Pulling latest changes from GitHub..."
+            echo "📥 Pulling latest changes from GitHub..."
             git fetch --all
             git reset --hard origin/main
             
-            echo "Recreating Docker containers..."
+            echo "🐳 Stopping current containers..."
+            docker compose down
+            
+            echo "🔨 Rebuilding and starting containers..."
             docker compose up -d --build --remove-orphans
             
-            echo "Cleaning up unused Docker images..."
-            docker image prune -f
+            echo "🧹 Cleaning up unused Docker images..."
+            docker image prune -af
             
-            echo "Done! The bot is updated and running."
+            echo "⏳ Waiting for services to start..."
+            sleep 5
+            
+            echo "🔍 Verifying webhook server health..."
+            if curl -sf http://localhost:23983/webhook/health > /dev/null; then
+              echo "✅ Webhook server is healthy!"
+            else
+              echo "⚠️ Webhook server health check failed"
+              docker compose logs --tail=20 matrixbot
+            fi
+            
+            echo "✅ Deploy completed!"

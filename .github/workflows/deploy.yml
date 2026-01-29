@@ -3,11 +3,16 @@ name: Deploy to VPS
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch: 
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -16,34 +21,85 @@ jobs:
           username: ${{ secrets.VPS_USER }}    
           key: ${{ secrets.SSH_PRIVATE_KEY }}  
           port: ${{ secrets.VPS_PORT }}
-          timeout: 60s
-          command_timeout: 10m
+          timeout: 120s
+          command_timeout: 15m
           script: |
-            echo "📁 Navigating to project folder..."
-            cd /admin/matrixbot
+            set -e  # Exit immediately if a command exits with a non-zero status
             
+            PROJECT_DIR="/admin/matrixbot"
+            BACKUP_DIR="/admin/backups/matrixbot"
+            DATE=$(date +%Y%m%d_%H%M%S)
+            
+            echo "🚀 Starting deployment..."
+            
+            # 1. Verification
+            if [ ! -d "$PROJECT_DIR" ]; then
+                echo "❌ Project directory not found at $PROJECT_DIR"
+                exit 1
+            fi
+            
+            cd "$PROJECT_DIR"
+            
+            if [ ! -f ".env" ]; then
+                echo "❌ CRITICAL: .env file missing!"
+                exit 1
+            fi
+            
+            # 2. Backup E2EE Store
+            echo "📦 Backing up session store..."
+            mkdir -p "$BACKUP_DIR"
+            if [ -d "store" ]; then
+                tar -czf "$BACKUP_DIR/store_$DATE.tar.gz" store/
+                # Keep only last 5 backups
+                ls -dt "$BACKUP_DIR"/store_*.tar.gz | tail -n +6 | xargs -r rm
+                echo "✅ Backup created at $BACKUP_DIR/store_$DATE.tar.gz"
+            else
+                echo "⚠️ No store directory found, skipping backup."
+            fi
+            
+            # 3. Update Code
             echo "📥 Pulling latest changes from GitHub..."
             git fetch --all
             git reset --hard origin/main
             
-            echo "🐳 Stopping current containers..."
-            docker compose down
+            # 4. Rebuild
+            echo "🐳 Rebuilding containers..."
+            # Stop first to ensure clean state
+            docker compose down || true
             
-            echo "🔨 Rebuilding and starting containers..."
-            docker compose up -d --build --remove-orphans
-            
-            echo "🧹 Cleaning up unused Docker images..."
-            docker image prune -af
-            
-            echo "⏳ Waiting for services to start..."
-            sleep 5
-            
-            echo "🔍 Verifying webhook server health..."
-            if curl -sf http://localhost:23983/webhook/health > /dev/null; then
-              echo "✅ Webhook server is healthy!"
-            else
-              echo "⚠️ Webhook server health check failed"
-              docker compose logs --tail=20 matrixbot
+            # Build and Start
+            if ! docker compose up -d --build --remove-orphans; then
+                echo "❌ Docker build/start failed!"
+                # Restore backup if needed? (Advanced: could restore previous image here)
+                exit 1
             fi
             
-            echo "✅ Deploy completed!"
+            # 5. Cleanup
+            echo "🧹 Cleaning up unused Docker images..."
+            docker image prune -f
+            
+            # 6. Health Check Loop
+            echo "⏳ Waiting for service to become healthy (max 60s)..."
+            MAX_RETRIES=12
+            RETRY=0
+            HEALTHY=0
+            
+            while [ $RETRY -lt $MAX_RETRIES ]; do
+                if curl -sf --max-time 2 http://localhost:23983/webhook/health > /dev/null; then
+                    echo "✅ Health check passed!"
+                    HEALTHY=1
+                    break
+                fi
+                echo "Testing connection... ($RETRY/$MAX_RETRIES)"
+                sleep 5
+                RETRY=$((RETRY+1))
+            done
+            
+            if [ $HEALTHY -eq 0 ]; then
+                echo "❌ Health check FAILED after 60 seconds."
+                echo "📜 Recent logs:"
+                docker compose logs --tail=50 matrixbot
+                exit 1
+            fi
+            
+            echo "✅ Deploy completed successfully!"

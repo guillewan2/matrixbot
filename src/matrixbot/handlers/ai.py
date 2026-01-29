@@ -122,7 +122,7 @@ class AIHandler:
             "function_declarations": [
                 {
                     "name": "send_message_on_behalf",
-                    "description": "Send a message to another user on behalf of the current user. Use this when the user asks you to tell something to someone else.",
+                    "description": "CRITICAL: Use this tool IMMEDIATELY when the user asks you to send a message to someone. Do not ask for confirmation. Do not roleplay sending it. Call this tool to actually send the message.",
                     "parameters": {
                         "type": "OBJECT",
                         "properties": {
@@ -197,7 +197,18 @@ class AIHandler:
         
         # Get trigger-specific configuration
         model = trigger_config.get("model", "gemini-2.0-flash-exp")
-        system_prompt = trigger_config.get("system_prompt", "You are a helpful assistant.")
+        base_system_prompt = trigger_config.get("system_prompt", "You are a helpful assistant.")
+        
+        # Append tool instructions to system prompt
+        system_prompt = (
+            f"{base_system_prompt}\n\n"
+            "SYSTEM INSTRUCTIONS:\n"
+            "You have access to a tool called 'send_message_on_behalf'. "
+            "When the user asks you to tell something to someone or send a message, "
+            "you MUST use this tool. Do not just say you will do it; actually call the tool. "
+            "If the user provides a username like 'jaimeloncio74', pass it as 'jaimeloncio74' (without domain) "
+            "or the full ID if provided. The tool will handle the delivery."
+        )
         max_history = trigger_config.get("max_history", 10)
         
         if not api_key or api_key == "YOUR_GEMINI_API_KEY_HERE":

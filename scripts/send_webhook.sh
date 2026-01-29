@@ -25,13 +25,13 @@ while true; do
         break
     fi
     
-    # Escapar caracteres especiales en el mensaje para JSON
-    ESCAPED_MSG=$(python3 -c "import json; print(json.dumps('''$MSG''')[1:-1])")
+    # Construir JSON completo con Python para evitar problemas de escape con espacios y caracteres especiales
+    JSON_PAYLOAD=$(echo "$MSG" | python3 -c "import json,sys; print(json.dumps({'content': sys.stdin.read().strip()}))")
     
     echo "Enviando a: $WEBHOOK_URL"
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$WEBHOOK_URL" \
         -H 'Content-Type: application/json' \
-        -d "{\"content\": \"$ESCAPED_MSG\"}")
+        -d "$JSON_PAYLOAD")
     
     if [ "$HTTP_CODE" -eq 204 ] || [ "$HTTP_CODE" -eq 200 ]; then
         echo " [enviado - $HTTP_CODE]"

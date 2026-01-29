@@ -235,7 +235,12 @@ class WebhookServer:
         await runner.setup()
         site = web.TCPSite(runner, "0.0.0.0", self.port)
         await site.start()
+        
+        # Log registered routes for debugging
         logger.info(f"Webhook server started on port {self.port}")
+        for resource in self.app.router.resources():
+            logger.info(f"Registered route: {resource}")
+            
         return runner
     
     async def stop(self, runner):

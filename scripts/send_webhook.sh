@@ -6,7 +6,17 @@ if [ -z "$MATRIX_USER" ]; then
     read -p "Introduce el usuario Matrix destino (@usuario:matrix.nasfurui.cat): " MATRIX_USER
 fi
 
-WEBHOOK_URL="http://100.124.77.20:23983/api/webhooks/${MATRIX_USER}/token"
+# URL encode the Matrix User to ensure special characters like @ and : are handled correctly
+ENCODED_USER=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$MATRIX_USER'''))")
+
+# Use local IP by default, but allow override or use logic to determine target
+# Assuming localhost for script default, change to your VPS IP if running remotely
+BASE_URL="http://localhost:23983"
+# BASE_URL="http://100.124.77.20:23983" # Descomentar para usar IP de Tailscale
+
+WEBHOOK_URL="$BASE_URL/api/webhooks/${ENCODED_USER}/token"
+
+echo "Configurado para enviar a: $WEBHOOK_URL"
 
 while true; do
     read -p "Mensaje a enviar (vacío para salir): " MSG

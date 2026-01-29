@@ -7,6 +7,7 @@ import asyncio
 import os
 import json
 import logging
+import markdown
 from pathlib import Path
 from nio import (
     AsyncClient,
@@ -418,74 +419,7 @@ class MatrixBot:
                     
         except Exception as e:
             logger.error(f"Failed to send message: {e}", exc_info=True)
-    
-    def markdown_to_html(self, text: str) -> str:
-        """Convert markdown to HTML for Matrix with support for code blocks."""
-        try:
-            import re
-            
-            # Store the original for comparison
-            html = text
-            
-            # Code blocks: ```language\ncode\n``` -> <pre><code class="language-X">code</code></pre>
-            code_blocks = []
-            def save_code_block(match):
-                try:
-                    language = match.group(1) if match.group(1) else ''
-                    code = match.group(2)
-                    # Escape HTML in code but KEEP newlines
-                    code = code.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                    # Store code block with a unique placeholder that won't be affected by markdown
-                    placeholder = f'{{{{CODE-BLOCK-{len(code_blocks)}}}}}'
-                    if language:
-                        code_blocks.append(f'<pre><code class="language-{language}">{code}</code></pre>')
-                    else:
-                        code_blocks.append(f'<pre><code>{code}</code></pre>')
-                    return placeholder
-                except Exception as e:
-                    logger.error(f"Error in save_code_block: {e}")
-                    return match.group(0)  # Return original text on error
-            
-            # Multi-line code blocks with optional language - BEFORE other replacements
-            # Pattern matches: ```language (optional newline) code (optional newline) ```
-            html = re.sub(r'```(\w+)?\s*\n?(.*?)\n?```', save_code_block, html, flags=re.DOTALL)
-            
-            # Single-line code blocks (```)
-            html = re.sub(r'```(.+?)```', r'<code>\1</code>', html)
-            
-            # Bold: **text** or __text__ -> <strong>text</strong>
-            html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
-            html = re.sub(r'__(.+?)__', r'<strong>\1</strong>', html)
-            
-            # Italic: *text* or _text_ -> <em>text</em>
-            html = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html)
-            html = re.sub(r'_(.+?)_', r'<em>\1</em>', html)
-            
-            # Inline code: `text` -> <code>text</code>
-            def replace_inline_code(match):
-                try:
-                    code = match.group(1)
-                    # Escape HTML in code
-                    code = code.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                    return f'<code>{code}</code>'
-                except Exception as e:
-                    logger.error(f"Error in replace_inline_code: {e}")
-                    return match.group(0)  # Return original text on error
-            
-            html = re.sub(r'`(.+?)`', replace_inline_code, html)
-            
-            # Line breaks: \n -> <br/> (but NOT inside code blocks which are saved)
-            html = html.replace('\n', '<br/>')
-            
-            # Restore code blocks (which preserve their internal newlines)
-            for i, code_block in enumerate(code_blocks):
-                html = html.replace(f'{{{{CODE-BLOCK-{i}}}}}', code_block)
-            
-            return html
-            
-        except Exception as e:
-            logger.error(f"Markdown conversion error: {e}", exc_info=True)
-            return text  # Return original text if markdown processing fails
+
     
     async def sync_forever(self):
         """Sync loop that runs forever."""
@@ -643,16 +577,16 @@ class MatrixBot:
             raise e
     
     def markdown_to_html(self, text: str) -> str:
-        """Convert simple markdown to HTML."""
-        import re
-        html = text
-        # Bold: **text** → <strong>text</strong>
-        html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
-        # Code: `text` → <code>text</code>
-        html = re.sub(r'`(.+?)`', r'<code>\1</code>', html)
-        # Newlines: \n → <br>
-        html = html.replace('\n', '<br>')
-        return html
+        """Convert markdown to HTML using the markdown library."""
+        try:
+            # Convert using markdown library with useful extensions
+            return markdown.markdown(
+                text,
+                extensions=['fenced_code', 'nl2br', 'sane_lists', 'tables']
+            )
+        except Exception as e:
+            logger.error(f"Error converting markdown: {e}")
+            return text
     
     async def on_system_login(self, event_type: str, user: str, details: dict):
         """Callback when a system login is detected."""

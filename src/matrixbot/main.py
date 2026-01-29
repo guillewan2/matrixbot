@@ -586,6 +586,10 @@ class MatrixBot:
                         logger.info(f"Created/Found DM room {target_room_id} with {user_id}")
                     else:
                         # Si falla, puede que el usuario no exista o no permita invites
+                        if hasattr(resp, 'message') and "M_UNKNOWN" in resp.message:
+                             # Intentar enviar solo el invite primero si falla la creacion directa
+                             logger.warning(f"Failed to create DM room, retrying differently. Error: {resp}")
+                        
                         error_msg = f"Failed to create DM with {user_id}. Response: {resp}"
                         logger.error(error_msg)
                         raise Exception(error_msg)

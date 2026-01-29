@@ -579,13 +579,14 @@ class MatrixBot:
                     resp = await self.client.room_create(
                         invite=[user_id],
                         is_direct=True,
-                        preset="trusted_private_chat"
+                        preset="private_chat"
                     )
                     if isinstance(resp, RoomCreateResponse):
                         target_room_id = resp.room_id
-                        logger.info(f"Created DM room {target_room_id} with {user_id}")
+                        logger.info(f"Created/Found DM room {target_room_id} with {user_id}")
                     else:
-                        error_msg = f"Failed to create DM with {user_id}: {resp}"
+                        # Si falla, puede que el usuario no exista o no permita invites
+                        error_msg = f"Failed to create DM with {user_id}. Response: {resp}"
                         logger.error(error_msg)
                         raise Exception(error_msg)
 

@@ -14,6 +14,7 @@ from nio import (
     MatrixRoom,
     RoomMessageText,
     LoginResponse,
+    RoomCreateResponse,
     SyncResponse,
     InviteMemberEvent,
     RoomMemberEvent,
@@ -553,6 +554,39 @@ class MatrixBot:
     async def send_webhook_message(self, message: str, room_id: str):
         """Send a message to a room from webhook."""
         try:
+            target_room_id = room_id
+            
+            # Handle Direct Message to user (if room_id is a user ID like @user:server)
+            if room_id.startswith('@'):
+                user_id = room_id
+                target_room_id = None
+                
+                # Check if we already have a DM with this user
+                for room_id_iter, room in self.client.rooms.items():
+                    # Check for direct chat with 2 members including the target
+                    if len(room.users) == 2 and user_id in room.users:
+                        target_room_id = room_id_iter
+                        break
+                
+                # If not found, create a new DM
+                if not target_room_id:
+                    logger.info(f"Creating DM with {user_id}")
+                    try:
+                        resp = await self.client.room_create(
+                            invite=[user_id],
+                            is_direct=True,
+                            preset="trusted_private_chat"
+                        )
+                        if isinstance(resp, RoomCreateResponse):
+                            target_room_id = resp.room_id
+                            logger.info(f"Created DM room {target_room_id} with {user_id}")
+                        else:
+                            logger.error(f"Failed to create DM with {user_id}: {resp}")
+                            return
+                    except Exception as e:
+                        logger.error(f"Exception creating DM: {e}")
+                        return
+
             # Convert markdown-style formatting to HTML for better display
             html_body = self.markdown_to_html(message)
             
@@ -563,17 +597,17 @@ class MatrixBot:
                 "formatted_body": html_body
             }
             
-            logger.debug(f"Sending webhook message to {room_id}")
+            logger.debug(f"Sending webhook message to {target_room_id}")
             
             # For security room, ignore unverified devices
             # (webhooks need to work even if devices aren't verified)
             response = await self.client.room_send(
-                room_id=room_id,
+                room_id=target_room_id,
                 message_type="m.room.message",
                 content=content,
                 ignore_unverified_devices=True
             )
-            logger.info(f"✅ Webhook message sent to {room_id}: {response}")
+            logger.info(f"✅ Webhook message sent to {target_room_id}: {response}")
         except Exception as e:
             logger.error(f"❌ Error sending webhook message to {room_id}: {e}", exc_info=True)
     

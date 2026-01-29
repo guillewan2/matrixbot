@@ -7,6 +7,7 @@ import asyncio
 import logging
 import json
 from typing import Optional, Callable
+from urllib.parse import unquote
 from aiohttp import web
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,9 @@ class WebhookServer:
         self.app.router.add_post("/webhook/notify", self.handle_notify)
         self.app.router.add_get("/webhook/notify", self.handle_notify)
         self.app.router.add_get("/webhook/health", self.handle_health)
+        
+        # Discord-compatible webhook endpoint
+        self.app.router.add_post("/api/webhooks/{id}/{token}", self.handle_discord_webhook)
     
     def set_message_callback(self, callback: Callable):
         """
@@ -149,6 +153,81 @@ class WebhookServer:
     async def handle_health(self, request: web.Request) -> web.Response:
         """Health check endpoint."""
         return web.json_response({"status": "healthy", "port": self.port})
+
+    async def handle_discord_webhook(self, request: web.Request) -> web.Response:
+        """Handle Discord-formatted webhook."""
+        webhook_id = request.match_info.get('id', '')
+        webhook_token = request.match_info.get('token', '')
+        
+        # Try to decode target from ID or Token
+        # We expect URL encoded Matrix ID like @user:server.com
+        decoded_id = unquote(webhook_id)
+        decoded_token = unquote(webhook_token)
+        
+        target = self.DEFAULT_ROOM_ID
+        
+        # Check if one of them looks like a Matrix ID
+        # User specified: @usuario:matrix.nasfurui.cat
+        if decoded_id.startswith('@'):
+            target = decoded_id
+        elif decoded_token.startswith('@'):
+            target = decoded_token
+            
+        # Parse payload
+        try:
+            data = await request.json()
+        except Exception as e:
+            logger.error(f"Invalid JSON in discord webhook: {e}")
+            return web.json_response({"error": "Invalid JSON"}, status=400)
+            
+        content = data.get("content", "")
+        username = data.get("username", "")
+        embeds = data.get("embeds", [])
+        
+        # Construct message
+        parts = []
+        if username and username != "Webhook":
+            parts.append(f"**[{username}]**")
+            
+        if content:
+            parts.append(content)
+            
+        for embed in embeds:
+            title = embed.get("title", "")
+            desc = embed.get("description", "")
+            url = embed.get("url", "")
+            
+            if title:
+                if url:
+                    parts.append(f"**[{title}]({url})**")
+                else:
+                    parts.append(f"**{title}**")
+            if desc:
+                parts.append(desc)
+            
+            # Fields
+            fields = embed.get("fields", [])
+            for field in fields:
+                fname = field.get("name", "")
+                fval = field.get("value", "")
+                if fname:
+                    parts.append(f"**{fname}**")
+                if fval:
+                    parts.append(fval)
+        
+        full_message = "\n\n".join(parts)
+        
+        if not full_message.strip():
+             return web.json_response({"message": "Empty message ignored"}, status=204)
+
+        if self.message_callback:
+            try:
+                await self.message_callback(full_message, target)
+            except Exception as e:
+                logger.error(f"Error in discord webhook callback: {e}")
+                return web.json_response({"error": str(e)}, status=500)
+                
+        return web.json_response({"status": "ok"}, status=204)
     
     async def start(self):
         """Start the webhook server."""

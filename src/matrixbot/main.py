@@ -562,30 +562,35 @@ class MatrixBot:
                 target_room_id = None
                 
                 # Check if we already have a DM with this user
+                # We iterate through rooms to find a direct chat
                 for room_id_iter, room in self.client.rooms.items():
                     # Check for direct chat with 2 members including the target
+                    # Note: room.users might be incomplete if lazy loading members, 
+                    # but for DMs usually we have the members locally if we talked recently.
                     if len(room.users) == 2 and user_id in room.users:
                         target_room_id = room_id_iter
+                        logger.info(f"Found existing DM {target_room_id} for {user_id}")
                         break
                 
                 # If not found, create a new DM
                 if not target_room_id:
                     logger.info(f"Creating DM with {user_id}")
-                    try:
-                        resp = await self.client.room_create(
-                            invite=[user_id],
-                            is_direct=True,
-                            preset="trusted_private_chat"
-                        )
-                        if isinstance(resp, RoomCreateResponse):
-                            target_room_id = resp.room_id
-                            logger.info(f"Created DM room {target_room_id} with {user_id}")
-                        else:
-                            logger.error(f"Failed to create DM with {user_id}: {resp}")
-                            return
-                    except Exception as e:
-                        logger.error(f"Exception creating DM: {e}")
-                        return
+                    # We don't catch exceptions here to let them propagate to the webhook handler (so it returns 500)
+                    resp = await self.client.room_create(
+                        invite=[user_id],
+                        is_direct=True,
+                        preset="trusted_private_chat"
+                    )
+                    if isinstance(resp, RoomCreateResponse):
+                        target_room_id = resp.room_id
+                        logger.info(f"Created DM room {target_room_id} with {user_id}")
+                    else:
+                        error_msg = f"Failed to create DM with {user_id}: {resp}"
+                        logger.error(error_msg)
+                        raise Exception(error_msg)
+
+            if not target_room_id:
+                raise Exception(f"Could not obtain a valid room ID for target {room_id}")
 
             # Convert markdown-style formatting to HTML for better display
             html_body = self.markdown_to_html(message)
@@ -607,9 +612,26 @@ class MatrixBot:
                 content=content,
                 ignore_unverified_devices=True
             )
-            logger.info(f"✅ Webhook message sent to {target_room_id}: {response}")
+            
+            # Check for error in response
+            if hasattr(response, 'transport_response'): 
+                 # Assuming it's a RoomSendResponse or Error. 
+                 # Nio returns RoomSendError on failure logic usually but let's check basic success
+                 pass
+            
+            # If response indicates error (nio usually returns Error classes)
+            # We can check if it has 'event_id' which means success
+            if not hasattr(response, 'event_id'):
+                 # It might be an error response
+                 logger.error(f"Failed to send webhook message: {response}")
+                 raise Exception(f"Matrix send failed: {response}")
+
+            logger.info(f"✅ Webhook message sent to {target_room_id}")
+            
         except Exception as e:
             logger.error(f"❌ Error sending webhook message to {room_id}: {e}", exc_info=True)
+            # Re-raise exception so the webhook server returns 500
+            raise e
     
     def markdown_to_html(self, text: str) -> str:
         """Convert simple markdown to HTML."""

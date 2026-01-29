@@ -246,9 +246,9 @@ Cada usuario puede tener:
 
 ## Servidor Webhook
 
-El bot expone un servidor en el puerto **23983** para recibir notificaciones externas.
+El bot expone un servidor en el puerto **23983** para recibir notificaciones externas y webhooks.
 
-### Endpoints
+### Endpoints clásicos
 
 ```bash
 # Health check
@@ -267,13 +267,55 @@ POST /webhook/notify
 {"title": "Título", "message": "Texto", "priority": "high"}
 ```
 
-### Ejemplo
+### Endpoint compatible con Discord y envío directo a usuarios
+
+Puedes usar el endpoint:
+
+```
+POST /api/webhooks/{id}/{token}
+```
+
+- Si `{id}` o `{token}` es un usuario Matrix (ej: `@usuario:matrix.nasfurui.cat`), el mensaje se enviará como DM a ese usuario.
+- Si no, se enviará al room por defecto.
+- El formato del body es igual al de Discord:
+
+```json
+{
+  "content": "Mensaje a enviar",
+  "username": "Opcional",
+  "embeds": [ ... ]
+}
+```
+
+**Ejemplo de uso para enviar a un usuario:**
 
 ```bash
-curl -X POST http://localhost:23983/webhook/notify \
+curl -X POST \
+  "http://localhost:23983/api/webhooks/@guille:matrix.nasfurui.cat/token" \
   -H "Content-Type: application/json" \
-  -d '{"title": "Backup OK", "message": "Completado", "priority": "high"}'
+  -d '{"content": "¡Hola desde webhook!"}'
 ```
+
+Puedes usar también el usuario URL-encoded:
+
+```bash
+curl -X POST \
+  "http://localhost:23983/api/webhooks/%40guille%3Amatrix.nasfurui.cat/token" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Mensaje privado"}'
+```
+
+### Script interactivo para enviar webhooks
+
+Se incluye el script `scripts/send_webhook.sh` para enviar mensajes fácilmente a cualquier usuario Matrix:
+
+```bash
+./scripts/send_webhook.sh
+```
+
+- Te pedirá el usuario destino (ej: `@usuario:matrix.nasfurui.cat`)
+- Podrás escribir mensajes y se enviarán como DM vía webhook
+- Deja el mensaje vacío para salir
 
 ---
 

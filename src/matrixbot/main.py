@@ -373,6 +373,38 @@ class MatrixBot:
     async def send_message(self, room_id: str, message: str):
         """Send a message to a room with markdown support, splitting into one message per paragraph."""
         try:
+            # Handle Direct Message to user (if room_id is a user ID like @user:server)
+            if room_id.startswith('@'):
+                user_id = room_id
+                target_room_id = None
+                
+                # Check if we already have a DM with this user
+                for room_id_iter, room in self.client.rooms.items():
+                    if len(room.users) == 2 and user_id in room.users:
+                        target_room_id = room_id_iter
+                        logger.info(f"Found existing DM {target_room_id} for {user_id}")
+                        break
+                
+                # If not found, create a new DM
+                if not target_room_id:
+                    logger.info(f"Creating DM with {user_id}")
+                    resp = await self.client.room_create(
+                        invite=[user_id],
+                        is_direct=True,
+                        preset="private_chat"
+                    )
+                    if isinstance(resp, RoomCreateResponse):
+                        target_room_id = resp.room_id
+                        logger.info(f"Created/Found DM room {target_room_id} with {user_id}")
+                    else:
+                        logger.error(f"Failed to create DM with {user_id}. Response: {resp}")
+                        # If we can't create a DM, we can't send the message.
+                        # We should probably return or raise here, but let's try to proceed 
+                        # which will likely fail in room_send, or we can return early.
+                        return
+                
+                room_id = target_room_id
+
             # Split into one message per paragraph
             message_parts = self.split_into_messages(message)
             

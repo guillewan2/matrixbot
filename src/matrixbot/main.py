@@ -76,7 +76,7 @@ class MatrixBot:
         
         # Initialize handlers
         self.command_handler = CommandHandler()
-        self.ai_handler = AIHandler()
+        self.ai_handler = AIHandler(send_message_callback=self.send_message)
         
         # Initialize security logger
         self.security_logger = SecurityLogger()

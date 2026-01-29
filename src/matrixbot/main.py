@@ -290,6 +290,10 @@ class MatrixBot:
         """Process incoming message and generate response."""
         message = message.strip()
         
+        # Easter egg: que -> so
+        if message.lower() == "que" or message.lower() == "qué":
+            return "so"
+        
         # Get user configuration
         user_config = self.ai_handler.get_user_config(sender)
         

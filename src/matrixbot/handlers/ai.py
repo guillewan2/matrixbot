@@ -339,46 +339,65 @@ class AIHandler:
                         
                         tool_result = await self.execute_tool(tool_name, tool_args)
                         
-                        # OPTIMIZATION: Skip sending result back to model.
-                        # We construct a manual confirmation.
+            if response.candidates and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if fn := part.function_call:
+                        # Execute tool
+                        tool_name = fn.name
+                        tool_args = dict(fn.args)
                         
-                        if tool_result.get("status") == "success":
-                             final_response_text += f"✅ {tool_result.get('message', 'Acción completada.')}\n"
-                        else:
-                             final_response_text += f"❌ {tool_result.get('message', 'Error en la acción.')}\n"
+                        tool_result = await self.execute_tool(tool_name, tool_args)
                         
-                        # Note: Gemini's chat.history is managed by the SDK.
-                        # Since we skipped sending the tool output, chat.history will be incomplete
-                        # (it has the tool call, but not the tool response or the final model text).
-                        # We need to ensure we save a coherent history for the next reload.
-                        # We will rely on our manual history saving below which just appends text.
-                        # For text-only storage, this is fine. The next load will see User Text -> Model Text.
+                        # Send result back to model
+                        try:
+                            response = await asyncio.wait_for(
+                                asyncio.to_thread(
+                                    chat.send_message,
+                                    genai.protos.Content(
+                                        parts=[genai.protos.Part(
+                                            function_response=genai.protos.FunctionResponse(
+                                                name=tool_name,
+                                                response=tool_result
+                                            )
+                                        )]
+                                    )
+                                ),
+                                timeout=90.0
+                            )
+                        except asyncio.TimeoutError:
+                             return "⏱️ Timeout waiting for tool confirmation."
 
-            # Get final text response if no tool was called (or if model sent text along with tool)
-            # Sometimes models send text thoughts before tool calls.
-            if response.text and not final_response_text:
-                 final_response_text = response.text
-            elif response.text:
-                 # If we have both text and tool result, combine them
-                 final_response_text = f"{response.text}\n\n{final_response_text}"
+            # Get final text response
+            if response.text:
+                final_response_text = response.text
             
             # Update history
-            # We construct the history entry manually
-            
-            # Adding user message
-            new_entry_user = {"role": "user", "parts": [{"text": message}]}
-            
-            # Adding model response
-            new_entry_model = {"role": "model", "parts": [{"text": final_response_text}]}
-            
-            history_data.append(new_entry_user)
-            history_data.append(new_entry_model)
+            # We need to serialize the chat history for storage
+            # chat.history contains the full history including the new exchange
+            new_history = []
+            for event in chat.history:
+                # Serialize parts
+                parts_data = []
+                for part in event.parts:
+                    if part.text:
+                        parts_data.append({"text": part.text})
+                    # We skip function calls/responses in stored history to keep it simple for now,
+                    # or we can store them if we want full fidelity.
+                    # For simple text memory, text is enough.
+                    # If we strip function calls, we might break context for the model next time.
+                    # Let's try to store text only for now to avoid complex serialization of protobufs.
+                
+                if parts_data:
+                    new_history.append({
+                        "role": event.role,
+                        "parts": parts_data
+                    })
             
             # Truncate history
-            if len(history_data) > max_history * 2:  # *2 because user+model = 1 turn
-                history_data = history_data[-(max_history * 2):]
+            if len(new_history) > max_history * 2:  # *2 because user+model = 1 turn
+                new_history = new_history[-(max_history * 2):]
             
-            self.history[session_key] = history_data
+            self.history[session_key] = new_history
             self.save_history()
             
             return final_response_text
@@ -483,9 +502,6 @@ class AIHandler:
                 # Append assistant's message with tool calls
                 messages.append(response_message)
                 
-                # Verify specific tool call logic (assuming single tool capability for now)
-                final_response_text = ""
-                
                 for tool_call in tool_calls:
                     function_name = tool_call.function.name
                     function_args = json.loads(tool_call.function.arguments)
@@ -493,29 +509,20 @@ class AIHandler:
                     # Execute tool
                     tool_result = await self.execute_tool(function_name, function_args)
                     
-                    # OPTIMIZATION: Do NOT call the API again.
-                    # Instead, we assume success or failure based on tool_result and return a canned response.
-                    # This saves 1 API request.
-                    
-                    # Append tool result to messages for history integrity
+                    # Append tool result
                     messages.append({
                         "tool_call_id": tool_call.id,
                         "role": "tool",
                         "name": function_name,
                         "content": json.dumps(tool_result)
                     })
-                    
-                    if tool_result.get("status") == "success":
-                         final_response_text += f"✅ {tool_result.get('message', 'Acción completada.')}\n"
-                    else:
-                         final_response_text += f"❌ {tool_result.get('message', 'Error en la acción.')}\n"
-
-                # We fake the assistant's response in history so next turn has proper context
-                messages.append({
-                    "role": "assistant",
-                    "content": final_response_text
-                })
-
+                
+                # Get follow-up response
+                second_response = await client.chat.completions.create(
+                    model=model,
+                    messages=messages
+                )
+                final_response_text = second_response.choices[0].message.content
             else:
                 final_response_text = response_message.content
             
@@ -532,12 +539,6 @@ class AIHandler:
             
             # Adding model response
             new_entry_model = {"role": "model", "parts": [{"text": final_response_text}]}
-            
-            # Note: We are simplifying history storage here by just storing the final text interaction.
-            # Storing the intermediate tool calls in JSON would be better for perfect resume,
-            # but for this simple bot, text history is usually sufficient and cheaper.
-            # If we wanted full history, we'd need to convert 'messages' back to our storage format.
-            # For now, let's stick to the existing simple format (User Text -> Model Text).
             
             history_data.append(new_entry_user)
             history_data.append(new_entry_model)

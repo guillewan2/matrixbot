@@ -26,6 +26,9 @@ class AIHandler:
         
         self.load_users()
         self.load_history()
+        
+        # Initialize Groq client
+        self.groq_clients = {}
     
     def load_users(self):
         """Load user configurations from JSON file."""
@@ -516,6 +519,10 @@ class AIHandler:
                 final_response_text = second_response.choices[0].message.content
             else:
                 final_response_text = response_message.content
+            
+            # Strip <think> tags if present (common in models like DeepSeek/Qwen)
+            import re
+            final_response_text = re.sub(r'<think>.*?</think>', '', final_response_text, flags=re.DOTALL).strip()
             
             # Update history (save the new turn)
             # We map back to Gemini-like format for consistency in storage

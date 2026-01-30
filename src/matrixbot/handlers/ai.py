@@ -214,20 +214,34 @@ class AIHandler:
         if not api_key or api_key == "YOUR_GEMINI_API_KEY_HERE":
             return f"⚠️ AI is enabled but no valid API key is configured for trigger '{trigger}'. Please contact the administrator."
         
+        # Get AI provider
+        ai_provider = user_config.get("ai", "aistudio")
+        
         # Generate AI response
         try:
-            response_text = await self.generate_ai_response(
-                api_key=api_key,
-                model=model,
-                message=message,
-                system_prompt=system_prompt,
-                user_id=user_id,
-                trigger=trigger,
-                max_history=max_history
-            )
+            if ai_provider == "groq":
+                response_text = await self.generate_groq_response(
+                    api_key=api_key,
+                    model=model,
+                    message=message,
+                    system_prompt=system_prompt,
+                    user_id=user_id,
+                    trigger=trigger,
+                    max_history=max_history
+                )
+            else:
+                response_text = await self.generate_ai_response(
+                    api_key=api_key,
+                    model=model,
+                    message=message,
+                    system_prompt=system_prompt,
+                    user_id=user_id,
+                    trigger=trigger,
+                    max_history=max_history
+                )
             return response_text
         except Exception as e:
-            logger.error(f"Error generating AI response for {user_id} with trigger '{trigger}': {e}", exc_info=True)
+            logger.error(f"Error generating AI response for {user_id} with trigger '{trigger}' (provider: {ai_provider}): {e}", exc_info=True)
             return f"❌ Error generating AI response: {str(e)}"
     
     async def generate_ai_response(
@@ -364,6 +378,152 @@ class AIHandler:
             
         except Exception as e:
             logger.error(f"Gemini API error: {e}", exc_info=True)
+            raise
+
+    def _send_message_tool_groq(self):
+        """Define the send_message tool for Groq (OpenAI format)."""
+        return {
+            "type": "function",
+            "function": {
+                "name": "send_message_on_behalf",
+                "description": "CRITICAL: Use this tool IMMEDIATELY when the user asks you to send a message to someone. Do not ask for confirmation. Do not roleplay sending it. Call this tool to actually send the message.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "target_username": {
+                            "type": "string",
+                            "description": "The username of the recipient (e.g., 'jaimeloncio74'). Do not include the domain if not provided."
+                        },
+                        "message_content": {
+                            "type": "string",
+                            "description": "The content of the message to send."
+                        }
+                    },
+                    "required": ["target_username", "message_content"]
+                }
+            }
+        }
+
+    async def generate_groq_response(
+        self,
+        api_key: str,
+        model: str,
+        message: str,
+        system_prompt: str,
+        user_id: str,
+        trigger: str,
+        max_history: int
+    ) -> str:
+        """Generate a response using Groq API."""
+        try:
+            # Get or create client
+            client = self.groq_clients.get(api_key)
+            if not client:
+                client = AsyncGroq(api_key=api_key)
+                self.groq_clients[api_key] = client
+            
+            # Prepare messages
+            session_key = f"{user_id}:{trigger}"
+            history_data = self.history.get(session_key, [])
+            
+            messages = [{"role": "system", "content": system_prompt}]
+            
+            # Convert history to OpenAI format
+            # Gemini history: [{"role": "user", "parts": [{"text": "..."}]}, ...]
+            # OpenAI history: [{"role": "user", "content": "..."}, ...]
+            for entry in history_data:
+                role = entry.get("role")
+                parts = entry.get("parts", [])
+                
+                # Map role 'model' -> 'assistant'
+                if role == "model":
+                    role = "assistant"
+                
+                # Extract text
+                content = ""
+                for part in parts:
+                    if part.get("text"):
+                        content += part.get("text")
+                
+                if content:
+                    messages.append({"role": role, "content": content})
+            
+            # Add current message
+            messages.append({"role": "user", "content": message})
+            
+            # Truncate if needed (basic truncation)
+            # Keeping system prompt + last N messages
+            if len(messages) > max_history + 2:  # +2 for system and current
+                 # Keep system prompt (index 0) and the last relevant messages
+                 messages = [messages[0]] + messages[-(max_history + 1):]
+
+            # Call API
+            tools = [self._send_message_tool_groq()]
+            
+            response = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=tools,
+                tool_choice="auto",
+                max_tokens=4096
+            )
+            
+            response_message = response.choices[0].message
+            tool_calls = response_message.tool_calls
+            
+            # Check for tool calls
+            if tool_calls:
+                # Append assistant's message with tool calls
+                messages.append(response_message)
+                
+                for tool_call in tool_calls:
+                    function_name = tool_call.function.name
+                    function_args = json.loads(tool_call.function.arguments)
+                    
+                    # Execute tool
+                    tool_result = await self.execute_tool(function_name, function_args)
+                    
+                    # Append tool result
+                    messages.append({
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": function_name,
+                        "content": json.dumps(tool_result)
+                    })
+                
+                # Get follow-up response
+                second_response = await client.chat.completions.create(
+                    model=model,
+                    messages=messages
+                )
+                final_response_text = second_response.choices[0].message.content
+            else:
+                final_response_text = response_message.content
+            
+            # Update history (save the new turn)
+            # We map back to Gemini-like format for consistency in storage
+            # 'assistant' -> 'model'
+            
+            # Adding user message
+            new_entry_user = {"role": "user", "parts": [{"text": message}]}
+            
+            # Adding model response
+            new_entry_model = {"role": "model", "parts": [{"text": final_response_text}]}
+            
+            history_data.append(new_entry_user)
+            history_data.append(new_entry_model)
+            
+            # Truncate stored history
+            if len(history_data) > max_history * 2:
+                history_data = history_data[-(max_history * 2):]
+            
+            self.history[session_key] = history_data
+            self.save_history()
+            
+            return final_response_text
+            
+        except Exception as e:
+            logger.error(f"Groq API error: {e}")
             raise
 
     def reload_users(self):

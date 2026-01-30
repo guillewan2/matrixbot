@@ -59,6 +59,23 @@ class AIHandler:
             logger.error(f"Error loading AI history: {e}")
             self.history = {}
 
+    def clear_history(self, user_id: str) -> bool:
+        """Clear the history for a specific user across all their triggers."""
+        keys_to_delete = []
+        # Identify keys belonging to the user
+        for key in self.history.keys():
+            if key.startswith(f"{user_id}:"):
+                keys_to_delete.append(key)
+        
+        # Delete identified keys
+        if keys_to_delete:
+            for key in keys_to_delete:
+                del self.history[key]
+            self.save_history()
+            logger.info(f"Cleared AI history for user {user_id} ({len(keys_to_delete)} sessions removed)")
+            return True
+        return False
+
     def save_history(self):
         """Save conversation history to JSON file."""
         try:

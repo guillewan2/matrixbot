@@ -304,6 +304,16 @@ class MatrixBot:
             clean_message = message[8:].strip()  # Remove "!prompt "
             return await self.ai_handler.handle_message(sender, clean_message, trigger="!prompt")
         
+        # Check for !clean command (clear AI history)
+        if message.strip() == "!clean":
+            if sender.startswith("@guille"):
+                if self.ai_handler.clear_history(sender):
+                    return "OK"
+                else:
+                    return "OK"
+            else:
+                return "⛔ No tienes permiso para usar este comando."
+        
         # Check if it's a regular command (starts with !)
         if message.startswith("!") or message.startswith("magnet"):
             return await self.command_handler.handle_command(sender, message, user_config, room.room_id)

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Optional, Callable, Dict, List, Any
 import google.generativeai as genai
 from google.generativeai.types import FunctionDeclaration, Tool
+from groq import AsyncGroq
 
 logger = logging.getLogger(__name__)
 

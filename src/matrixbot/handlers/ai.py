@@ -260,31 +260,31 @@ class AIHandler:
             # Configure API key
             genai.configure(api_key=api_key)
             
-            # Create model instance with tools
+            # Create model instance
             tools = self._send_message_tool()
-            model_instance = genai.GenerativeModel(model, tools=[tools])
-            
+            try:
+                # Try to initialize with tools
+                model_instance = genai.GenerativeModel(
+                    model, 
+                    tools=[tools],
+                    system_instruction=system_prompt
+                )
+                # Test checking if model supports tools by accessing valid properties or just proceed
+                # The error usually happens when we try to use it or if the API rejects the config
+            except Exception:
+                # Fallback to no tools if initialization fails immediately (unlikely)
+                model_instance = genai.GenerativeModel(
+                    model, 
+                    system_instruction=system_prompt
+                )
+                tools = None  # Flag that tools are disabled
+
             # Retrieve history
             session_key = f"{user_id}:{trigger}"
             history_data = self.history.get(session_key, [])
             
             # Convert stored history to Gemini format
             chat_history = []
-            
-            # Add system prompt as the first part of history if possible, 
-            # or just prepend it to the context. 
-            # Gemini python SDK handles system instructions in the model config usually,
-            # but here we can just rely on the chat session.
-            # Ideally, we should set system_instruction on GenerativeModel if supported,
-            # but let's stick to the prompt context or history.
-            
-            # Note: Gemini 1.5+ supports system_instruction in constructor.
-            # We will try to use it if we re-instantiate, but we are doing it per request.
-            model_instance = genai.GenerativeModel(
-                model, 
-                tools=[tools],
-                system_instruction=system_prompt
-            )
             
             # Convert history
             for entry in history_data:
@@ -298,10 +298,27 @@ class AIHandler:
             
             # Send message with timeout
             try:
-                response = await asyncio.wait_for(
-                    asyncio.to_thread(chat.send_message, message),
-                    timeout=90.0
-                )
+                try:
+                    response = await asyncio.wait_for(
+                        asyncio.to_thread(chat.send_message, message),
+                        timeout=90.0
+                    )
+                except Exception as e:
+                    # Check for "Function calling is not enabled" error
+                    if "Function calling is not enabled" in str(e) or "400" in str(e):
+                        logger.warning(f"Model {model} does not support function calling. Retrying without tools.")
+                        # Re-initialize without tools
+                        model_instance = genai.GenerativeModel(
+                            model, 
+                            system_instruction=system_prompt
+                        )
+                        chat = model_instance.start_chat(history=chat_history)
+                        response = await asyncio.wait_for(
+                            asyncio.to_thread(chat.send_message, message),
+                            timeout=90.0
+                        )
+                    else:
+                        raise e
             except asyncio.TimeoutError:
                 logger.error(f"Gemini API timeout after 90 seconds")
                 return "⏱️ La respuesta de la IA tardó demasiado (>90 segundos)."

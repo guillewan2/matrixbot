@@ -7,12 +7,17 @@ import json
 import logging
 import subprocess
 import asyncio
+import re
 from typing import Optional
 import aiohttp
 from .realdebrid import RealDebridHandler
 from ..monitors.download import DownloadMonitor
 
 logger = logging.getLogger(__name__)
+
+# Constants for AniList response formatting
+MAX_DESCRIPTION_LENGTH = 300
+DESCRIPTION_TRUNCATE_LENGTH = 297
 
 
 class CommandHandler:
@@ -217,11 +222,15 @@ class CommandHandler:
         Returns:
             Formatted string with anime/manga information
         """
-        if not anime_id or not anime_id.strip():
+        # Validate and clean input
+        if not anime_id:
+            return "❌ **Uso:** `!anilist <ID>`\n\nEjemplo: `!anilist 1` para Cowboy Bebop"
+        
+        anime_id = anime_id.strip()
+        if not anime_id:
             return "❌ **Uso:** `!anilist <ID>`\n\nEjemplo: `!anilist 1` para Cowboy Bebop"
         
         # Validate that the ID is numeric
-        anime_id = anime_id.strip()
         if not anime_id.isdigit():
             return f"❌ El ID debe ser un número. Uso: `!anilist <ID>`"
         
@@ -371,11 +380,10 @@ class CommandHandler:
                     # Description (truncated)
                     if description:
                         # Remove HTML tags
-                        import re
                         clean_desc = re.sub(r'<[^>]+>', '', description)
                         # Truncate if too long
-                        if len(clean_desc) > 300:
-                            clean_desc = clean_desc[:297] + "..."
+                        if len(clean_desc) > MAX_DESCRIPTION_LENGTH:
+                            clean_desc = clean_desc[:DESCRIPTION_TRUNCATE_LENGTH] + "..."
                         response_text += f"\n**Descripción:**\n{clean_desc}\n"
                     
                     # Links

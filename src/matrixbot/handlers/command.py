@@ -8,6 +8,7 @@ import logging
 import subprocess
 import asyncio
 from typing import Optional
+import aiohttp
 from .realdebrid import RealDebridHandler
 from ..monitors.download import DownloadMonitor
 
@@ -69,6 +70,12 @@ class CommandHandler:
                 "!reload": {
                     "description": "Reload commands configuration",
                     "allowed_users": ["@admin:matrix.example.com"],
+                    "script": None,
+                    "type": "builtin"
+                },
+                "!anilist": {
+                    "description": "Get anime/manga info from AniList by ID (e.g. !anilist 1)",
+                    "allowed_users": [],
                     "script": None,
                     "type": "builtin"
                 }
@@ -144,6 +151,9 @@ class CommandHandler:
         elif command == "!espacio":
             return await self.get_disk_space()
         
+        elif command == "!anilist":
+            return await self.handle_anilist(args)
+        
         else:
             return "Unknown built-in command"
     
@@ -194,6 +204,196 @@ class CommandHandler:
             return "❌ Timeout getting disk space information"
         except Exception as e:
             logger.error(f"Error getting disk space: {e}")
+            return f"❌ Error: {str(e)}"
+    
+    async def handle_anilist(self, anime_id: str) -> str:
+        """Handle AniList anime/manga lookup by ID.
+        
+        Usage: !anilist <ID>
+        
+        Args:
+            anime_id: AniList media ID
+        
+        Returns:
+            Formatted string with anime/manga information
+        """
+        if not anime_id or not anime_id.strip():
+            return "❌ **Uso:** `!anilist <ID>`\n\nEjemplo: `!anilist 1` para Cowboy Bebop"
+        
+        # Validate that the ID is numeric
+        anime_id = anime_id.strip()
+        if not anime_id.isdigit():
+            return f"❌ El ID debe ser un número. Uso: `!anilist <ID>`"
+        
+        try:
+            # AniList GraphQL API endpoint
+            url = "https://graphql.anilist.co"
+            
+            # GraphQL query to get anime/manga info
+            query = """
+            query ($id: Int) {
+                Media(id: $id) {
+                    id
+                    title {
+                        romaji
+                        english
+                        native
+                    }
+                    description
+                    type
+                    format
+                    status
+                    episodes
+                    chapters
+                    volumes
+                    season
+                    seasonYear
+                    averageScore
+                    popularity
+                    genres
+                    coverImage {
+                        large
+                    }
+                    bannerImage
+                    siteUrl
+                }
+            }
+            """
+            
+            variables = {"id": int(anime_id)}
+            
+            # Make the API request
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    url,
+                    json={"query": query, "variables": variables},
+                    headers={"Content-Type": "application/json"},
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as response:
+                    if response.status != 200:
+                        return f"❌ Error al conectar con AniList API (HTTP {response.status})"
+                    
+                    data = await response.json()
+                    
+                    # Check for errors
+                    if "errors" in data:
+                        error_msg = data["errors"][0].get("message", "Unknown error")
+                        if "404" in error_msg or "Not Found" in error_msg:
+                            return f"❌ No se encontró ningún anime/manga con ID `{anime_id}`"
+                        return f"❌ Error de AniList API: {error_msg}"
+                    
+                    # Extract media data
+                    media = data.get("data", {}).get("Media")
+                    if not media:
+                        return f"❌ No se encontró información para el ID `{anime_id}`"
+                    
+                    # Build response message
+                    title_romaji = media.get("title", {}).get("romaji", "N/A")
+                    title_english = media.get("title", {}).get("english")
+                    title_native = media.get("title", {}).get("native")
+                    media_type = media.get("type", "N/A")  # ANIME or MANGA
+                    media_format = media.get("format", "N/A")  # TV, MOVIE, OVA, etc.
+                    status = media.get("status", "N/A")
+                    episodes = media.get("episodes")
+                    chapters = media.get("chapters")
+                    volumes = media.get("volumes")
+                    season = media.get("season")
+                    season_year = media.get("seasonYear")
+                    average_score = media.get("averageScore")
+                    popularity = media.get("popularity")
+                    genres = media.get("genres", [])
+                    description = media.get("description", "")
+                    cover_image = media.get("coverImage", {}).get("large")
+                    site_url = media.get("siteUrl", "")
+                    
+                    # Format the response
+                    response_text = f"📺 **{title_romaji}**\n\n"
+                    
+                    # Add English title if different
+                    if title_english and title_english != title_romaji:
+                        response_text += f"🇬🇧 {title_english}\n"
+                    
+                    # Add native title
+                    if title_native:
+                        response_text += f"🇯🇵 {title_native}\n"
+                    
+                    response_text += "\n"
+                    
+                    # Type and format
+                    response_text += f"• **Tipo:** {media_type}"
+                    if media_format and media_format != "N/A":
+                        response_text += f" ({media_format})"
+                    response_text += "\n"
+                    
+                    # Status
+                    status_translations = {
+                        "FINISHED": "Finalizado",
+                        "RELEASING": "En emisión",
+                        "NOT_YET_RELEASED": "Próximamente",
+                        "CANCELLED": "Cancelado",
+                        "HIATUS": "En pausa"
+                    }
+                    status_spanish = status_translations.get(status, status)
+                    response_text += f"• **Estado:** {status_spanish}\n"
+                    
+                    # Episodes/Chapters
+                    if media_type == "ANIME" and episodes:
+                        response_text += f"• **Episodios:** {episodes}\n"
+                    elif media_type == "MANGA":
+                        if chapters:
+                            response_text += f"• **Capítulos:** {chapters}\n"
+                        if volumes:
+                            response_text += f"• **Volúmenes:** {volumes}\n"
+                    
+                    # Season and year
+                    if season and season_year:
+                        season_translations = {
+                            "WINTER": "Invierno",
+                            "SPRING": "Primavera",
+                            "SUMMER": "Verano",
+                            "FALL": "Otoño"
+                        }
+                        season_spanish = season_translations.get(season, season)
+                        response_text += f"• **Temporada:** {season_spanish} {season_year}\n"
+                    
+                    # Score
+                    if average_score:
+                        response_text += f"• **Puntuación:** {average_score}/100 ⭐\n"
+                    
+                    # Popularity
+                    if popularity:
+                        response_text += f"• **Popularidad:** #{popularity}\n"
+                    
+                    # Genres
+                    if genres:
+                        response_text += f"• **Géneros:** {', '.join(genres)}\n"
+                    
+                    # Description (truncated)
+                    if description:
+                        # Remove HTML tags
+                        import re
+                        clean_desc = re.sub(r'<[^>]+>', '', description)
+                        # Truncate if too long
+                        if len(clean_desc) > 300:
+                            clean_desc = clean_desc[:297] + "..."
+                        response_text += f"\n**Descripción:**\n{clean_desc}\n"
+                    
+                    # Links
+                    response_text += f"\n🔗 [Ver en AniList]({site_url})"
+                    
+                    # Add cover image if available
+                    if cover_image:
+                        response_text += f"\n\n![Cover]({cover_image})"
+                    
+                    return response_text
+                    
+        except asyncio.TimeoutError:
+            return "❌ Timeout al conectar con AniList API"
+        except aiohttp.ClientError as e:
+            logger.error(f"Error connecting to AniList API: {e}")
+            return f"❌ Error de conexión con AniList API"
+        except Exception as e:
+            logger.error(f"Error in handle_anilist: {e}")
             return f"❌ Error: {str(e)}"
     
     async def handle_magnet(self, sender: str, magnet_link: str, user_config: Optional[dict] = None, room_id: str = "") -> str:

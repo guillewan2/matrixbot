@@ -13,12 +13,13 @@
 5. [Sistema de Comandos](#sistema-de-comandos)
 6. [Integración con IA (Gemini)](#integración-con-ia-gemini)
 7. [RealDebrid y Descargas](#realdebrid-y-descargas)
-8. [Servidor Webhook](#servidor-webhook)
-9. [Seguridad y E2EE](#seguridad-y-e2ee)
-10. [Ejecución como Servicio](#ejecución-como-servicio)
-11. [Dockerización](#dockerización)
-12. [Troubleshooting](#troubleshooting)
-13. [FAQ](#faq)
+8. [AniList - Información de Anime/Manga](#anilist---información-de-animemanga)
+9. [Servidor Webhook](#servidor-webhook)
+10. [Seguridad y E2EE](#seguridad-y-e2ee)
+11. [Ejecución como Servicio](#ejecución-como-servicio)
+12. [Dockerización](#dockerización)
+13. [Troubleshooting](#troubleshooting)
+14. [FAQ](#faq)
 
 ---
 
@@ -33,6 +34,7 @@ MatrixBot es un bot completo para Matrix que incluye:
 - 🚪 **Auto-join**: Acepta invitaciones automáticamente
 - 📥 **RealDebrid**: Integración para descargas de torrents
 - 📡 **Webhooks**: Servidor para recibir notificaciones externas
+- 📺 **AniList**: Obtén información de anime/manga por ID
 
 ---
 
@@ -151,6 +153,7 @@ El bot acepta automáticamente todas las invitaciones a salas y envía un mensaj
 | `!ping` | Verifica que el bot responde |
 | `!espacio` | Muestra espacio en disco |
 | `!reload` | Recarga configuración |
+| `!anilist <ID>` | Obtiene información de anime/manga desde AniList por ID |
 
 ### Interacción con IA
 
@@ -241,6 +244,42 @@ Cada usuario puede tener:
 3. El bot lo agrega a RealDebrid
 4. Monitorea el progreso automáticamente
 5. Te notifica con los links de descarga
+
+---
+
+## AniList - Información de Anime/Manga
+
+### Comando
+
+| Comando | Descripción |
+|---------|-------------|
+| `!anilist <ID>` | Obtiene información detallada de anime/manga desde AniList |
+
+### Uso
+
+Usa el comando con el ID de AniList del anime o manga que quieres consultar:
+
+```
+!anilist 1
+```
+
+Esto devolverá información detallada incluyendo:
+- 📺 Título (romaji, inglés y japonés)
+- 📋 Tipo y formato (TV, Movie, OVA, etc.)
+- ✅ Estado (Finalizado, En emisión, etc.)
+- 📊 Número de episodios/capítulos
+- 📅 Temporada y año
+- ⭐ Puntuación promedio
+- 🏷️ Géneros
+- 📝 Descripción
+- 🔗 Enlace a AniList
+- 🖼️ Imagen de portada
+
+### ¿Cómo encontrar el ID?
+
+El ID de AniList aparece en la URL del anime/manga en AniList.co:
+- URL: `https://anilist.co/anime/1/Cowboy-Bebop/`
+- ID: `1`
 
 ---
 

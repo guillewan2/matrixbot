@@ -7,8 +7,10 @@ services:
       - ./store:/app/store
       - ./logs:/app/logs
       - ./.env:/app/.env
-    network_mode: "host"
+    # network_mode: "host"
+    ports:
+      - "23983:23983"
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     restart: unless-stopped
-    # Ports are ignored when using host network mode
-    # ports:
-    #   - "8080:8080"

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class WebhookServer:
     """HTTP webhook server for receiving notifications from other devices."""
     
-    DEFAULT_ROOM_ID = "!pDyuEmkITrMcncMFMy:nasfurui.es"
+    DEFAULT_ROOM_ID = "!VeCwUSSnxFGhsfBMbr:nasfurui.es"
     DEFAULT_PORT = 23983
     
     def __init__(self, port: int = DEFAULT_PORT):

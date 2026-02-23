@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class SecurityLogger:
     """Logs security events and sends them as webhooks."""
     
-    DEFAULT_SECURITY_ROOM = "!pDyuEmkITrMcncMFMy:nasfurui.es"
+    DEFAULT_SECURITY_ROOM = "!VeCwUSSnxFGhsfBMbr:nasfurui.es"
     
     def __init__(self, webhook_callback=None):
         """

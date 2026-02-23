@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Monitor de Nginx Proxy Manager
-Verifica si matrix.nasfurui.cat está disponible y reinicia el contenedor si es necesario
+Verifica si nasfurui.es está disponible y reinicia el contenedor si es necesario
 """
 
 import asyncio
@@ -26,7 +26,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Configuración
-CHECK_URL = "https://matrix.nasfurui.cat"
+CHECK_URL = "https://nasfurui.es"
 CONTAINER_NAME = "nginx_proxy_manager-app-1"
 CHECK_INTERVAL = 300  # 5 minutos
 RESTART_COOLDOWN = 3600  # 1 hora - tiempo mínimo entre reinicios

@@ -78,4 +78,4 @@ curl -s -X POST "http://${BOT_HOST}:${BOT_PORT}/webhook/log" \
 echo ""
 
 echo "✅ Pruebas completadas. Revisa los mensajes en la room de Matrix:"
-echo "   !pDyuEmkITrMcncMFMy:matrix.nasfurui.cat"
+echo "   !pDyuEmkITrMcncMFMy:nasfurui.es"

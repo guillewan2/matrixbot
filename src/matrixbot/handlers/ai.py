@@ -173,7 +173,7 @@ class AIHandler:
             
             # Construct full user ID if domain is missing
             if ":" not in target_username:
-                target_user_id = f"@{target_username}:matrix.nasfurui.cat"
+                target_user_id = f"@{target_username}:nasfurui.es"
             else:
                 target_user_id = target_username
                 

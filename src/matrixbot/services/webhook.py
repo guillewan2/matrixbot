@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class WebhookServer:
     """HTTP webhook server for receiving notifications from other devices."""
     
-    DEFAULT_ROOM_ID = "!pDyuEmkITrMcncMFMy:matrix.nasfurui.cat"
+    DEFAULT_ROOM_ID = "!pDyuEmkITrMcncMFMy:nasfurui.es"
     DEFAULT_PORT = 23983
     
     def __init__(self, port: int = DEFAULT_PORT):
@@ -167,7 +167,7 @@ class WebhookServer:
         target = self.DEFAULT_ROOM_ID
         
         # Check if one of them looks like a Matrix ID
-        # User specified: @usuario:matrix.nasfurui.cat
+        # User specified: @usuario:nasfurui.es
         if decoded_id.startswith('@'):
             target = decoded_id
         elif decoded_token.startswith('@'):

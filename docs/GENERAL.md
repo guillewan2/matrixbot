@@ -275,7 +275,7 @@ Puedes usar el endpoint:
 POST /api/webhooks/{id}/{token}
 ```
 
-- Si `{id}` o `{token}` es un usuario Matrix (ej: `@usuario:matrix.nasfurui.cat`), el mensaje se enviará como DM a ese usuario.
+- Si `{id}` o `{token}` es un usuario Matrix (ej: `@usuario:nasfurui.es`), el mensaje se enviará como DM a ese usuario.
 - Si no, se enviará al room por defecto.
 - El formato del body es igual al de Discord:
 
@@ -291,7 +291,7 @@ POST /api/webhooks/{id}/{token}
 
 ```bash
 curl -X POST \
-  "http://localhost:23983/api/webhooks/@guille:matrix.nasfurui.cat/token" \
+  "http://localhost:23983/api/webhooks/@guille:nasfurui.es/token" \
   -H "Content-Type: application/json" \
   -d '{"content": "¡Hola desde webhook!"}'
 ```
@@ -300,7 +300,7 @@ Puedes usar también el usuario URL-encoded:
 
 ```bash
 curl -X POST \
-  "http://localhost:23983/api/webhooks/%40guille%3Amatrix.nasfurui.cat/token" \
+  "http://localhost:23983/api/webhooks/%40guille%3Anasfurui.es/token" \
   -H "Content-Type: application/json" \
   -d '{"content": "Mensaje privado"}'
 ```
@@ -313,7 +313,7 @@ Se incluye el script `scripts/send_webhook.sh` para enviar mensajes fácilmente 
 ./scripts/send_webhook.sh
 ```
 
-- Te pedirá el usuario destino (ej: `@usuario:matrix.nasfurui.cat`)
+- Te pedirá el usuario destino (ej: `@usuario:nasfurui.es`)
 - Podrás escribir mensajes y se enviarán como DM vía webhook
 - Deja el mensaje vacío para salir
 

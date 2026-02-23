@@ -3,7 +3,7 @@
 
 MATRIX_USER="$1"
 if [ -z "$MATRIX_USER" ]; then
-    read -p "Introduce el usuario Matrix destino (@usuario:matrix.nasfurui.cat): " MATRIX_USER
+    read -p "Introduce el usuario Matrix destino (@usuario:nasfurui.es): " MATRIX_USER
 fi
 
 # URL encode the Matrix User to ensure special characters like @ and : are handled correctly

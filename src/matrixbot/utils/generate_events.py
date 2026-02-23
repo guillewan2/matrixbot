@@ -22,8 +22,8 @@ device_events = []
 
 # Usuarios REALES del servidor (basados en tu users.json y lo que has mencionado)
 real_users = [
-    '@pruebas:matrix.nasfurui.cat',  # Usuario de pruebas real
-    '@admin:matrix.nasfurui.cat',     # Probablemente admin
+    '@pruebas:nasfurui.es',  # Usuario de pruebas real
+    '@admin:nasfurui.es',     # Probablemente admin
 ]
 
 # IPs REALES del servidor y red local
@@ -63,9 +63,9 @@ for i in range(12):
 
 # Logins fallidos de IPs sospechosas (intentos de ataque reales)
 suspicious_users_attempts = [
-    '@admin:matrix.nasfurui.cat',  # Intentan adivinar credenciales de admin
-    '@root:matrix.nasfurui.cat',   # Usuario común en ataques
-    '@test:matrix.nasfurui.cat',   # Otro usuario común
+    '@admin:nasfurui.es',  # Intentan adivinar credenciales de admin
+    '@root:nasfurui.es',   # Usuario común en ataques
+    '@test:nasfurui.es',   # Otro usuario común
 ]
 
 for i in range(12):
@@ -82,9 +82,9 @@ for i in range(12):
 
 # Eventos de salas - usando nombres más realistas
 real_rooms = [
-    '!general:matrix.nasfurui.cat',
-    '!admin:matrix.nasfurui.cat',
-    '!pruebas:matrix.nasfurui.cat',
+    '!general:nasfurui.es',
+    '!admin:nasfurui.es',
+    '!pruebas:nasfurui.es',
 ]
 
 # Mensajes enviados por usuarios reales
@@ -105,7 +105,7 @@ for i in range(1):
     room_events.append({
         'timestamp': timestamp,
         'type': 'room',
-        'room_id': f'!newroom{i}:matrix.nasfurui.cat',
+        'room_id': f'!newroom{i}:nasfurui.es',
         'user_id': real_users[0],
         'event_type': 'create',
         'details': {}

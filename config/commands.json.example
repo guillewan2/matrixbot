@@ -47,6 +47,12 @@
             "allowed_users": ["@admin:matrix.example.com"],
             "script": "hostname",
             "type": "shell"
+        },
+        "!anilist": {
+            "description": "Get anime/manga info from AniList by ID (e.g. !anilist 1)",
+            "allowed_users": [],
+            "script": null,
+            "type": "builtin"
         }
     }
 }
